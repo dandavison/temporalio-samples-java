@@ -26,47 +26,57 @@ public class CommandProcessor {
     String startProcessing();
 
     @UpdateMethod
-    String submitCommand(String command);
+    String submitCommand(int command);
   }
 
   @ActivityInterface
   public interface MyActivities {
-    String processCommand(String command);
+    String processCommand(int command);
   }
 
   public static class MyWorkflowImpl implements CommandProcessorWorkflow {
 
-    private ArrayList<String> commandQueue;
-    private int numCommandsProcessed;
+    private ArrayList<Integer> commandQueue;
+    private boolean done;
 
     public MyWorkflowImpl() {
       this.commandQueue = new ArrayList<>();
-      this.numCommandsProcessed = 0;
+      this.done = false;
     }
 
     private final MyActivities activities =
         Workflow.newActivityStub(
             MyActivities.class,
-            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
+            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
 
     @Override
     public String startProcessing() {
-      Workflow.await(() -> this.numCommandsProcessed >= 2);
+      Workflow.await(() -> this.done);
       return "done";
     }
 
     @Override
-    public String submitCommand(String command) {
+    public String submitCommand(int command) {
+      if (command < 0) {
+        this.done = true;
+        return "stopping workflow";
+      }
       this.commandQueue.add(command);
       String result = activities.processCommand(command);
-      this.numCommandsProcessed++;
       return result;
     }
   }
 
   static class MyActivitiesImpl implements MyActivities {
     @Override
-    public String processCommand(String command) {
+    public String processCommand(int command) {
+      try {
+        // Earlier commands are slower, so we must serialize if they are to complete in order of
+        // receipt.
+        Thread.sleep(1000L * (3 - command));
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
       return command + " [processed]";
     }
   }
@@ -90,9 +100,11 @@ public class CommandProcessor {
                 .build());
 
     WorkflowClient.start(commandProcessor::startProcessing);
-    String result = commandProcessor.submitCommand("my-command-1");
+    String result = commandProcessor.submitCommand(1);
     System.out.println(result);
-    result = commandProcessor.submitCommand("my-command-2");
+    result = commandProcessor.submitCommand(2);
+    System.out.println(result);
+    result = commandProcessor.submitCommand(-1);
     System.out.println(result);
 
     String output = WorkflowStub.fromTyped(commandProcessor).getResult(String.class);
