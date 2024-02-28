@@ -9,6 +9,7 @@ import io.temporal.client.WorkflowStub;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;
+import io.temporal.workflow.CompletablePromise;
 import io.temporal.workflow.UpdateMethod;
 import io.temporal.workflow.Workflow;
 import io.temporal.workflow.WorkflowInterface;
@@ -36,7 +37,17 @@ public class CommandProcessor {
 
   public static class CommandProcessorWorkflowImpl implements CommandProcessorWorkflow {
 
-    private ArrayList<Integer> commandQueue;
+    private static class QueuedCommand {
+      public int command;
+      public CompletablePromise<String> promise;
+
+      public QueuedCommand(int command, CompletablePromise<String> promise) {
+        this.command = command;
+        this.promise = promise;
+      }
+    }
+
+    private ArrayList<QueuedCommand> commandQueue;
     private boolean done;
 
     public CommandProcessorWorkflowImpl() {
@@ -51,11 +62,11 @@ public class CommandProcessor {
 
     @Override
     public String startProcessing() {
-      while (this.commandQueue.size() > 0 || !this.done) {
+      while (!this.done || this.commandQueue.size() > 0) {
         Workflow.await(() -> this.commandQueue.size() > 0);
-        int command = this.commandQueue.remove(0);
-        String result = activities.processCommand(command);
-        System.out.println(result);
+        QueuedCommand queuedCommand = this.commandQueue.remove(0);
+        String result = activities.processCommand(queuedCommand.command);
+        queuedCommand.promise.complete(result);
       }
       return "done";
     }
@@ -66,22 +77,24 @@ public class CommandProcessor {
         this.done = true;
         return "stopping workflow";
       }
-      this.commandQueue.add(command);
-      return "submitted: " + command;
+      CompletablePromise<String> promise = Workflow.newPromise();
+      QueuedCommand queuedCommand = new QueuedCommand(command, promise);
+      this.commandQueue.add(queuedCommand);
+      return queuedCommand.promise.get();
     }
   }
 
   static class MyActivitiesImpl implements MyActivities {
     @Override
-    public String processCommand(int command) {
+    public String processCommand(int commandNum) {
       try {
         // Earlier commands are slower, so we must serialize if they are to complete in order of
         // receipt.
-        Thread.sleep(1000L * (3 - command));
+        Thread.sleep(1000L * (3 - commandNum));
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-      return command + " [processed]";
+      return commandNum + " [processed]";
     }
   }
 
