@@ -51,7 +51,12 @@ public class CommandProcessor {
 
     @Override
     public String startProcessing() {
-      Workflow.await(() -> this.done);
+      while (this.commandQueue.size() > 0 || !this.done) {
+        Workflow.await(() -> this.commandQueue.size() > 0);
+        int command = this.commandQueue.remove(0);
+        String result = activities.processCommand(command);
+        System.out.println(result);
+      }
       return "done";
     }
 
@@ -62,8 +67,7 @@ public class CommandProcessor {
         return "stopping workflow";
       }
       this.commandQueue.add(command);
-      String result = activities.processCommand(command);
-      return result;
+      return "submitted: " + command;
     }
   }
 
