@@ -16,6 +16,7 @@ import io.temporal.workflow.WorkflowInterface;
 import io.temporal.workflow.WorkflowMethod;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
 
 public class CommandProcessor {
   static final String TASK_QUEUE = "MyTaskQueue";
@@ -62,24 +63,24 @@ public class CommandProcessor {
 
     @Override
     public String startProcessing() {
-      while (this.commandQueue.size() > 0 || !this.done) {
-        System.out.println(
-            "commandQueue.size = " + this.commandQueue.size() + " done = " + this.done);
-        Workflow.await(() -> this.commandQueue.size() > 0);
+      while (true) {
+        Workflow.await(() -> this.commandQueue.size() > 0 || this.done);
+        if (this.done && this.commandQueue.size() == 0) {
+          return "done";
+        }
         QueuedCommand queuedCommand = this.commandQueue.remove(0);
         String result = activities.processCommand(queuedCommand.command);
-        Boolean alreadyCompleted = queuedCommand.promise.complete(result);
-        System.out.println("alreadyCompleted = " + !alreadyCompleted);
+        queuedCommand.promise.complete(result);
       }
-      System.out.println("returning from workflow");
-      return "done";
     }
 
     @Override
     public String submitCommand(int command) {
       if (command < 0) {
         this.done = true;
-        return "stopping workflow";
+        String result = "stopping workflow";
+        System.out.println(result);
+        return result;
       }
       CompletablePromise<String> promise = Workflow.newPromise();
       QueuedCommand queuedCommand = new QueuedCommand(command, promise);
@@ -98,7 +99,9 @@ public class CommandProcessor {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-      return commandNum + " [processed]";
+      String result = commandNum + " [processed]";
+      System.out.println(result);
+      return result;
     }
   }
 
@@ -120,16 +123,17 @@ public class CommandProcessor {
                     WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING)
                 .build());
 
+    WorkflowStub untypedWorkflowStub = WorkflowStub.fromTyped(commandProcessor);
+
     WorkflowClient.start(commandProcessor::startProcessing);
 
-    String result = commandProcessor.submitCommand(1);
-    System.out.println(result);
-    result = commandProcessor.submitCommand(2);
-    System.out.println(result);
-    result = commandProcessor.submitCommand(-1);
-    System.out.println(result);
-
-    String output = WorkflowStub.fromTyped(commandProcessor).getResult(String.class);
+    CompletableFuture<String> result1 =
+        untypedWorkflowStub.startUpdate("submitCommand", String.class, 1).getResultAsync();
+    CompletableFuture<String> result2 =
+        untypedWorkflowStub.startUpdate("submitCommand", String.class, 2).getResultAsync();
+    CompletableFuture.allOf(result1, result2).join();
+    commandProcessor.submitCommand(-1);
+    String output = untypedWorkflowStub.getResult(String.class);
     System.out.println(output);
     System.exit(0);
   }
