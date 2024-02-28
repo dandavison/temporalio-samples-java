@@ -1,6 +1,7 @@
 package io.temporal.samples.hello;
 
 import io.temporal.activity.ActivityInterface;
+import io.temporal.activity.ActivityOptions;
 import io.temporal.api.enums.v1.WorkflowIdReusePolicy;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
@@ -12,6 +13,7 @@ import io.temporal.workflow.UpdateMethod;
 import io.temporal.workflow.Workflow;
 import io.temporal.workflow.WorkflowInterface;
 import io.temporal.workflow.WorkflowMethod;
+import java.time.Duration;
 import java.util.ArrayList;
 
 public class CommandProcessor {
@@ -35,34 +37,29 @@ public class CommandProcessor {
   public static class MyWorkflowImpl implements CommandProcessorWorkflow {
 
     private ArrayList<String> commandQueue;
+    private int numCommandsProcessed;
 
     public MyWorkflowImpl() {
       this.commandQueue = new ArrayList<>();
+      this.numCommandsProcessed = 0;
     }
 
-    // private final MyActivities activities =
-    //     Workflow.newActivityStub(
-    //         MyActivities.class,
-    //         ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
+    private final MyActivities activities =
+        Workflow.newActivityStub(
+            MyActivities.class,
+            ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(2)).build());
 
     @Override
     public String startProcessing() {
-      System.out.println("starting workflow");
-      Workflow.await(
-          () -> {
-            System.out.println("evaluating await condition: " + this.commandQueue.size());
-            return this.commandQueue.size() > 0;
-          });
-      System.out.println("passed await");
+      Workflow.await(() -> this.numCommandsProcessed >= 2);
       return "done";
     }
 
     @Override
     public String submitCommand(String command) {
-      System.out.println("submitting: " + command);
       this.commandQueue.add(command);
-      // activities.processCommand(command); // TODO
-      String result = command + " [result]";
+      String result = activities.processCommand(command);
+      this.numCommandsProcessed++;
       return result;
     }
   }
@@ -93,7 +90,9 @@ public class CommandProcessor {
                 .build());
 
     WorkflowClient.start(commandProcessor::startProcessing);
-    String result = commandProcessor.submitCommand("my-command");
+    String result = commandProcessor.submitCommand("my-command-1");
+    System.out.println(result);
+    result = commandProcessor.submitCommand("my-command-2");
     System.out.println(result);
 
     String output = WorkflowStub.fromTyped(commandProcessor).getResult(String.class);
