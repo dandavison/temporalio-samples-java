@@ -62,12 +62,16 @@ public class CommandProcessor {
 
     @Override
     public String startProcessing() {
-      while (!this.done || this.commandQueue.size() > 0) {
+      while (this.commandQueue.size() > 0 || !this.done) {
+        System.out.println(
+            "commandQueue.size = " + this.commandQueue.size() + " done = " + this.done);
         Workflow.await(() -> this.commandQueue.size() > 0);
         QueuedCommand queuedCommand = this.commandQueue.remove(0);
         String result = activities.processCommand(queuedCommand.command);
-        queuedCommand.promise.complete(result);
+        Boolean alreadyCompleted = queuedCommand.promise.complete(result);
+        System.out.println("alreadyCompleted = " + !alreadyCompleted);
       }
+      System.out.println("returning from workflow");
       return "done";
     }
 
@@ -117,6 +121,7 @@ public class CommandProcessor {
                 .build());
 
     WorkflowClient.start(commandProcessor::startProcessing);
+
     String result = commandProcessor.submitCommand(1);
     System.out.println(result);
     result = commandProcessor.submitCommand(2);
