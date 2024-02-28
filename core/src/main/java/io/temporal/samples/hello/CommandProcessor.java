@@ -34,12 +34,12 @@ public class CommandProcessor {
     String processCommand(int command);
   }
 
-  public static class MyWorkflowImpl implements CommandProcessorWorkflow {
+  public static class CommandProcessorWorkflowImpl implements CommandProcessorWorkflow {
 
     private ArrayList<Integer> commandQueue;
     private boolean done;
 
-    public MyWorkflowImpl() {
+    public CommandProcessorWorkflowImpl() {
       this.commandQueue = new ArrayList<>();
       this.done = false;
     }
@@ -90,7 +90,7 @@ public class CommandProcessor {
     WorkflowClient client = WorkflowClient.newInstance(service);
     WorkerFactory factory = WorkerFactory.newInstance(client);
     Worker worker = factory.newWorker(TASK_QUEUE);
-    worker.registerWorkflowImplementationTypes(MyWorkflowImpl.class);
+    worker.registerWorkflowImplementationTypes(CommandProcessorWorkflowImpl.class);
     worker.registerActivitiesImplementations(new MyActivitiesImpl());
     factory.start();
     CommandProcessorWorkflow commandProcessor =
