@@ -29,6 +29,9 @@ public class CommandProcessor {
 
     @UpdateMethod
     String submitCommand(int command);
+
+    @UpdateMethod
+    void stop();
   }
 
   @ActivityInterface
@@ -76,14 +79,15 @@ public class CommandProcessor {
 
     @Override
     public String submitCommand(int command) {
-      if (command < 0) {
-        this.done = true;
-        return "stopping workflow";
-      }
       CompletablePromise<String> promise = Workflow.newPromise();
       QueuedCommand queuedCommand = new QueuedCommand(command, promise);
       this.commandQueue.add(queuedCommand);
       return queuedCommand.promise.get();
+    }
+
+    @Override
+    public void stop() {
+      this.done = true;
     }
   }
 
@@ -130,7 +134,7 @@ public class CommandProcessor {
             untypedWorkflowStub.startUpdate("submitCommand", String.class, 1).getResultAsync(),
             untypedWorkflowStub.startUpdate("submitCommand", String.class, 2).getResultAsync())
         .join();
-    commandProcessor.submitCommand(-1);
+    commandProcessor.stop();
     untypedWorkflowStub.getResult(String.class);
     System.exit(0);
   }
