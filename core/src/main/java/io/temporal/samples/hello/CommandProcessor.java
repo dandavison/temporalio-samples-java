@@ -25,10 +25,10 @@ public class CommandProcessor {
   @WorkflowInterface
   public interface CommandProcessorWorkflow {
     @WorkflowMethod
-    String startProcessing();
+    void startProcessing();
 
     @UpdateMethod
-    String submitCommand(int command);
+    String processCommand(int command);
 
     @UpdateMethod
     void stop();
@@ -41,53 +41,54 @@ public class CommandProcessor {
 
   public static class CommandProcessorWorkflowImpl implements CommandProcessorWorkflow {
 
-    private static class QueuedCommand {
-      public int command;
-      public CompletablePromise<String> promise;
-
-      public QueuedCommand(int command, CompletablePromise<String> promise) {
-        this.command = command;
-        this.promise = promise;
-      }
-    }
-
-    private ArrayList<QueuedCommand> commandQueue;
-    private boolean done;
-
-    public CommandProcessorWorkflowImpl() {
-      this.commandQueue = new ArrayList<>();
-      this.done = false;
-    }
-
     private final MyActivities activities =
         Workflow.newActivityStub(
             MyActivities.class,
             ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
 
+    private ArrayList<CompletablePromise<Void>> queue;
+    private boolean done;
+
     @Override
-    public String startProcessing() {
-      while (true) {
-        Workflow.await(() -> this.commandQueue.size() > 0 || this.done);
-        if (this.done && this.commandQueue.size() == 0) {
-          return "done";
-        }
-        QueuedCommand queuedCommand = this.commandQueue.remove(0);
-        String result = activities.processCommand(queuedCommand.command);
-        queuedCommand.promise.complete(result);
-      }
+    public void startProcessing() {
+      Workflow.await(() -> this.done);
     }
 
     @Override
-    public String submitCommand(int command) {
-      CompletablePromise<String> promise = Workflow.newPromise();
-      QueuedCommand queuedCommand = new QueuedCommand(command, promise);
-      this.commandQueue.add(queuedCommand);
-      return queuedCommand.promise.get();
+    public String processCommand(int command) {
+      _wait(); // [p1, p2]
+      String result = activities.processCommand(command);
+      _notify();
+      return result;
+    }
+
+    private void _wait() {
+      CompletablePromise<Void> p = Workflow.newPromise();
+      this.queue.add(p);
+      System.out.println("_wait: queue = " + this.queue);
+      if (this.queue.size() > 1) {
+        System.out.println("p.get()... " + p);
+        p.get();
+        System.out.println("... done p.get()");
+      }
+      this.queue.remove(0);
+    }
+
+    private void _notify() {
+      CompletablePromise<Void> p = this.queue.remove(0);
+      System.out.println("_notify... completing: " + p);
+      p.complete(null);
+      System.out.println("... done _notify");
     }
 
     @Override
     public void stop() {
       this.done = true;
+    }
+
+    public CommandProcessorWorkflowImpl() {
+      this.queue = new ArrayList<>();
+      this.done = false;
     }
   }
 
@@ -131,8 +132,8 @@ public class CommandProcessor {
     WorkflowClient.start(commandProcessor::startProcessing);
 
     CompletableFuture.allOf(
-            untypedWorkflowStub.startUpdate("submitCommand", String.class, 1).getResultAsync(),
-            untypedWorkflowStub.startUpdate("submitCommand", String.class, 2).getResultAsync())
+            untypedWorkflowStub.startUpdate("processCommand", String.class, 1).getResultAsync(),
+            untypedWorkflowStub.startUpdate("processCommand", String.class, 2).getResultAsync())
         .join();
     commandProcessor.stop();
     untypedWorkflowStub.getResult(String.class);
