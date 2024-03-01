@@ -56,35 +56,28 @@ public class CommandProcessor {
 
     @Override
     public String processCommand(int command) {
-      _wait(command); // [p1, p2]
+      _wait();
       String result = activities.processCommand(command);
-      _notify(command);
+      _notify();
       return result;
     }
 
-    private void _wait(int command) {
-      System.out.printf("_xwait(%d): queue = %s\n", command, this.queue);
+    // Add self to queue and wait if not first
+    private void _wait() {
       boolean first = this.queue.isEmpty();
-      CompletablePromise<Void> p = Workflow.newPromise();
-      this.queue.add(p);
-      if (first) {
-        return;
+      CompletablePromise<Void> self = Workflow.newPromise();
+      this.queue.add(self);
+      if (!first) {
+        self.get();
       }
-      System.out.println("p.get()... " + p);
-      p.get();
-      System.out.printf("... done p.get()\n");
     }
 
-    private void _notify(int command) {
-      System.out.printf("_xnotify(%d)... queue = %s\n", command, queue);
-      this.queue.remove(0); // remove self
-      if (this.queue.isEmpty()) {
-        return;
+    // Remove self from queue and advance next
+    private void _notify() {
+      this.queue.remove(0);
+      if (!this.queue.isEmpty()) {
+        this.queue.get(0).complete(null);
       }
-      CompletablePromise<Void> next = this.queue.get(0);
-      System.out.printf("_xnotify(%d)... completing %s\n", command, next);
-      next.complete(null);
-      System.out.printf("... done _xnotify(%d)\n", command);
     }
 
     @Override
