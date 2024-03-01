@@ -63,25 +63,28 @@ public class CommandProcessor {
     }
 
     private void _wait(int command) {
-      if (this.queue.isEmpty()) {
-        return;
-      }
+      System.out.printf("_xwait(%d): queue = %s\n", command, this.queue);
+      boolean first = this.queue.isEmpty();
       CompletablePromise<Void> p = Workflow.newPromise();
       this.queue.add(p);
-      System.out.printf("_wait(%d): queue = %s\n", command, this.queue);
+      if (first) {
+        return;
+      }
       System.out.println("p.get()... " + p);
       p.get();
       System.out.printf("... done p.get()\n");
     }
 
     private void _notify(int command) {
+      System.out.printf("_xnotify(%d)... queue = %s\n", command, queue);
+      this.queue.remove(0); // remove self
       if (this.queue.isEmpty()) {
         return;
       }
-      CompletablePromise<Void> p = this.queue.remove(0);
-      System.out.printf("_notify(%d)... completing %s\n", command, p);
-      p.complete(null);
-      System.out.printf("... done _notify(%d)\n", command);
+      CompletablePromise<Void> next = this.queue.get(0);
+      System.out.printf("_xnotify(%d)... completing %s\n", command, next);
+      next.complete(null);
+      System.out.printf("... done _xnotify(%d)\n", command);
     }
 
     @Override
@@ -136,7 +139,8 @@ public class CommandProcessor {
 
     CompletableFuture.allOf(
             untypedWorkflowStub.startUpdate("processCommand", String.class, 1).getResultAsync(),
-            untypedWorkflowStub.startUpdate("processCommand", String.class, 2).getResultAsync())
+            untypedWorkflowStub.startUpdate("processCommand", String.class, 2).getResultAsync(),
+            untypedWorkflowStub.startUpdate("processCommand", String.class, 3).getResultAsync())
         .join();
     commandProcessor.stop();
     untypedWorkflowStub.getResult(String.class);
