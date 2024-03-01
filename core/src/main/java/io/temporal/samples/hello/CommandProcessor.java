@@ -56,29 +56,32 @@ public class CommandProcessor {
 
     @Override
     public String processCommand(int command) {
-      _wait(); // [p1, p2]
+      _wait(command); // [p1, p2]
       String result = activities.processCommand(command);
-      _notify();
+      _notify(command);
       return result;
     }
 
-    private void _wait() {
+    private void _wait(int command) {
+      if (this.queue.isEmpty()) {
+        return;
+      }
       CompletablePromise<Void> p = Workflow.newPromise();
       this.queue.add(p);
-      System.out.println("_wait: queue = " + this.queue);
-      if (this.queue.size() > 1) {
-        System.out.println("p.get()... " + p);
-        p.get();
-        System.out.println("... done p.get()");
-      }
-      this.queue.remove(0);
+      System.out.printf("_wait(%d): queue = %s\n", command, this.queue);
+      System.out.println("p.get()... " + p);
+      p.get();
+      System.out.printf("... done p.get()\n");
     }
 
-    private void _notify() {
+    private void _notify(int command) {
+      if (this.queue.isEmpty()) {
+        return;
+      }
       CompletablePromise<Void> p = this.queue.remove(0);
-      System.out.println("_notify... completing: " + p);
+      System.out.printf("_notify(%d)... completing %s\n", command, p);
       p.complete(null);
-      System.out.println("... done _notify");
+      System.out.printf("... done _notify(%d)\n", command);
     }
 
     @Override
