@@ -1,4 +1,4 @@
-package io.temporal.samples.hello;
+package io.temporal.samples.scratchpad;
 
 import io.temporal.activity.ActivityInterface;
 import io.temporal.activity.ActivityOptions;

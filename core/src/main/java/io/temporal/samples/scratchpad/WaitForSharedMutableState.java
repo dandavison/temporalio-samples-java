@@ -1,4 +1,4 @@
-package io.temporal.samples.hello;
+package io.temporal.samples.scratchpad;
 
 import io.temporal.api.enums.v1.WorkflowIdReusePolicy;
 import io.temporal.client.WorkflowClient;
