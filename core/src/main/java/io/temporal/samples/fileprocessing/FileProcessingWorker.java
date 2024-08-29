@@ -38,7 +38,7 @@ public class FileProcessingWorker {
 
   public static void main(String[] args) {
 
-    String hostSpecifiTaskQueue = ManagementFactory.getRuntimeMXBean().getName();
+    String hostSpecificTaskQueue = ManagementFactory.getRuntimeMXBean().getName();
 
     // gRPC stubs wrapper that talks to the local docker instance of temporal service.
     WorkflowServiceStubs service = WorkflowServiceStubs.newLocalServiceStubs();
@@ -50,16 +50,16 @@ public class FileProcessingWorker {
     // Worker that listens on a task queue and hosts both workflow and activity implementations.
     final Worker workerForCommonTaskQueue = factory.newWorker(TASK_QUEUE);
     workerForCommonTaskQueue.registerWorkflowImplementationTypes(FileProcessingWorkflowImpl.class);
-    StoreActivitiesImpl storeActivityImpl = new StoreActivitiesImpl(hostSpecifiTaskQueue);
+    StoreActivitiesImpl storeActivityImpl = new StoreActivitiesImpl(hostSpecificTaskQueue);
     workerForCommonTaskQueue.registerActivitiesImplementations(storeActivityImpl);
 
     // Get worker to poll the host-specific task queue.
-    final Worker workerForHostSpecificTaskQueue = factory.newWorker(hostSpecifiTaskQueue);
+    final Worker workerForHostSpecificTaskQueue = factory.newWorker(hostSpecificTaskQueue);
     workerForHostSpecificTaskQueue.registerActivitiesImplementations(storeActivityImpl);
 
     // Start all workers created by this factory.
     factory.start();
     System.out.println("Worker started for task queue: " + TASK_QUEUE);
-    System.out.println("Worker Started for activity task Queue: " + hostSpecifiTaskQueue);
+    System.out.println("Worker Started for activity task Queue: " + hostSpecificTaskQueue);
   }
 }
