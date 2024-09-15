@@ -9,21 +9,21 @@ import io.temporal.workflow.WorkflowMethod;
 @WorkflowInterface
 public interface ClusterManagerWorkflow {
 
-    @WorkflowMethod
-    void run();
+  @WorkflowMethod
+  void run();
 
-    @SignalMethod
-    void startCluster();
+  @SignalMethod
+  void startCluster();
 
-    @SignalMethod
-    void shutdownCluster();
+  @SignalMethod
+  void shutdownCluster();
 
-    @UpdateMethod
-    void assignNodesToJob(AssignNodesToJobUpdateInput input);
+  @UpdateMethod
+  void assignNodesToJob(AssignNodesToJobUpdateInput input);
 
-    @UpdateMethod
-    void deleteJob(DeleteJobUpdateInput input);
+  @UpdateMethod
+  void deleteJob(DeleteJobUpdateInput input);
 
-    @QueryMethod
-    ClusterManagerStateSummary getClusterStatusQuery();
+  @QueryMethod
+  ClusterManagerStateSummary getClusterStatusQuery();
 }
