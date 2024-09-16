@@ -35,11 +35,13 @@ import org.slf4j.Logger;
  */
 public class MessagePassingIntro {
   public enum Language {
+    ARABIC,
     CHINESE,
     ENGLISH,
     FRENCH,
-    SPANISH,
+    HINDI,
     PORTUGUESE,
+    SPANISH,
   }
   // Define the task queue name
   static final String TASK_QUEUE = "MessagePassingIntro";
@@ -85,6 +87,7 @@ public class MessagePassingIntro {
     }
   }
 
+  // 👉 Use annotations to define message handlers in the Workflow interface
   @WorkflowInterface
   public interface GreetingWorkflow {
     @WorkflowMethod
@@ -99,6 +102,7 @@ public class MessagePassingIntro {
     @UpdateMethod
     Language setLanguage(Language language);
 
+    // 👉 Update validators are optional
     @UpdateValidatorMethod(updateName = "setLanguage")
     void setLanguageValidator(Language language);
 
@@ -114,11 +118,12 @@ public class MessagePassingIntro {
     private Language language = Language.ENGLISH;
     private Map<Language, String> greetings =
         Map.of(
-            Language.ENGLISH, "Hello, world",
-            Language.CHINESE, "你好，世界");
+            Language.CHINESE, "你好，世界",
+            Language.ENGLISH, "Hello, world");
 
     @Override
     public String getGreetings() {
+      // 👉 Use Workflow.await() to wait for a Signal to arrive.
       Workflow.await(() -> approvedForRelease);
       log.info("Approved for release by " + approverName);
       return greetings.get(language);
@@ -126,7 +131,9 @@ public class MessagePassingIntro {
 
     @Override
     public List<Language> getLanguages(GetLanguagesInput input) {
-      if (input.includeUnsupported) {
+    // 👉 A Query handler returns a value: it must not mutate the Workflow state
+    // or perform blocking operations.
+    if (input.includeUnsupported) {
         return Arrays.asList(Language.values());
       } else {
         return new ArrayList(greetings.keySet());
@@ -140,13 +147,15 @@ public class MessagePassingIntro {
 
     @Override
     public Language setLanguage(Language language) {
-      Language previousLanguage = this.language;
+    // 👉 An Update handler can mutate the Workflow state and return a value.
+    Language previousLanguage = this.language;
       this.language = language;
       return previousLanguage;
     }
 
     @Override
     public void setLanguageValidator(Language language) {
+      // 👉 An Update validator can perform validation but cannot mutate the Workflow state.
       if (!greetings.containsKey(language)) {
         throw new IllegalArgumentException("Unsupported language: " + language);
       }
@@ -154,6 +163,7 @@ public class MessagePassingIntro {
 
     @Override
     public void approve(ApproveInput input) {
+      // 👉 A Signal handler mutates the Workflow state but cannot return a value.
       approvedForRelease = true;
       approverName = input.name;
     }
@@ -207,15 +217,17 @@ public class MessagePassingIntro {
     // Start workflow asynchronously and call its getGreeting workflow method
     WorkflowClient.start(workflow::getGreetings);
 
-    // Send a Query to fetch the supported languages
+    // 👉 Send a Query to fetch the supported languages
     List<Language> languages = workflow.getLanguages(new GetLanguagesInput(false));
     System.out.println("Supported languages: " + languages);
 
-    // Send an Update to change the language
+    // 👉 Send an Update to change the language
     Language previousLanguage = workflow.setLanguage(Language.CHINESE);
     Language currentLanguage = workflow.getLanguage();
     System.out.println("Language changed: " + previousLanguage + "->" + currentLanguage);
 
+    // 👉 Start an Update (waiting for it to be accepted), and subsequently fetch
+    // the result using an UpdateHandle.
     UpdateHandle<Language> handle =
         WorkflowStub.fromTyped(workflow)
             .startUpdate(
