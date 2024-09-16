@@ -207,9 +207,11 @@ public class MessagePassingIntro {
     // Start workflow asynchronously and call its getGreeting workflow method
     WorkflowClient.start(workflow::getGreetings);
 
+    // Send a Query to fetch the supported languages
     List<Language> languages = workflow.getLanguages(new GetLanguagesInput(false));
     System.out.println("Supported languages: " + languages);
 
+    // Send an Update to change the language
     Language previousLanguage = workflow.setLanguage(Language.CHINESE);
     Language currentLanguage = workflow.getLanguage();
     System.out.println("Language changed: " + previousLanguage + "->" + currentLanguage);
