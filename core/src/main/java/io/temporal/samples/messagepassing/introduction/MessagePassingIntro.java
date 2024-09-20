@@ -93,12 +93,16 @@ public class MessagePassingIntro {
     @WorkflowMethod
     String getGreetings();
 
+    // 👉 Use the @QueryMethod annotation to define a Query handler in the
+    // Workflow interface.
     @QueryMethod
     List<Language> getLanguages(GetLanguagesInput input);
 
     @QueryMethod
     Language getLanguage();
 
+    // 👉 Use the @UpdateMethod annotation to define an Update handler in the
+    // Workflow interface.
     @UpdateMethod
     Language setLanguage(Language language);
 
@@ -106,6 +110,8 @@ public class MessagePassingIntro {
     @UpdateValidatorMethod(updateName = "setLanguage")
     void setLanguageValidator(Language language);
 
+    // 👉 Use the @SignalMethod annotation to define a Signal handler in the
+    // Workflow interface.
     @SignalMethod
     void approve(ApproveInput input);
   }
@@ -131,7 +137,7 @@ public class MessagePassingIntro {
 
     @Override
     public List<Language> getLanguages(GetLanguagesInput input) {
-    // 👉 A Query handler returns a value: it must not mutate the Workflow state
+    // 👉 The Query handler returns a value: it must not mutate the Workflow state
     // or perform blocking operations.
     if (input.includeUnsupported) {
         return Arrays.asList(Language.values());
