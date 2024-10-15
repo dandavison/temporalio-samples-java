@@ -23,8 +23,7 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.propagation.ContextPropagators;
 import io.opentelemetry.context.propagation.TextMapPropagator;
-import io.opentelemetry.exporter.jaeger.JaegerGrpcSpanExporter;
-import io.opentelemetry.extension.trace.propagation.JaegerPropagator;
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.opentracingshim.OpenTracingShim;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.resources.Resource;
@@ -67,15 +66,15 @@ public class MyWorker {
     Resource serviceNameResource =
         Resource.create(Attributes.of(ResourceAttributes.SERVICE_NAME, "Worker"));
 
-    JaegerGrpcSpanExporter jaegerExporter =
-        JaegerGrpcSpanExporter.builder()
+    OtlpGrpcSpanExporter otlpExporter =
+        OtlpGrpcSpanExporter.builder()
             .setEndpoint("http://localhost:4317")
             .setTimeout(1, TimeUnit.SECONDS)
             .build();
 
     SdkTracerProvider tracerProvider =
         SdkTracerProvider.builder()
-            .addSpanProcessor(SimpleSpanProcessor.create(jaegerExporter))
+            .addSpanProcessor(SimpleSpanProcessor.create(otlpExporter))
             .setResource(Resource.getDefault().merge(serviceNameResource))
             .build();
 
@@ -83,8 +82,7 @@ public class MyWorker {
         OpenTelemetrySdk.builder()
             .setPropagators(
                 ContextPropagators.create(
-                    TextMapPropagator.composite(
-                        W3CTraceContextPropagator.getInstance(), JaegerPropagator.getInstance())))
+                    TextMapPropagator.composite(W3CTraceContextPropagator.getInstance())))
             .setTracerProvider(tracerProvider)
             .build();
 
