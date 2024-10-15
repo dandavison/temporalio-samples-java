@@ -41,7 +41,8 @@ subprojects {
     }
 
     dependencies {
-
+        implementation "io.opentelemetry:opentelemetry-exporter-otlp:${otelVersion}"
+        implementation "io.opentelemetry:opentelemetry-sdk:${otelVersion}"
     }
 
     license {

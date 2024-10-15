@@ -19,10 +19,27 @@
 
 package io.temporal.samples.blockingupdate;
 
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
+import io.opentelemetry.context.propagation.ContextPropagators;
+import io.opentelemetry.context.propagation.TextMapPropagator;
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
+import io.opentelemetry.opentracingshim.OpenTracingShim;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
+import io.opentracing.Tracer;
 import io.temporal.client.WorkflowClient;
+import io.temporal.opentracing.OpenTracingOptions;
+import io.temporal.opentracing.OpenTracingSpanContextCodec;
+import io.temporal.opentracing.OpenTracingWorkerInterceptor;
 import io.temporal.serviceclient.WorkflowServiceStubs;
 import io.temporal.worker.Worker;
 import io.temporal.worker.WorkerFactory;
+import io.temporal.worker.WorkerFactoryOptions;
+import java.util.concurrent.TimeUnit;
 
 public class MyWorker {
   static final String TASK_QUEUE = "tq";
@@ -33,10 +50,48 @@ public class MyWorker {
 
     WorkflowClient client = WorkflowClient.newInstance(service);
 
-    WorkerFactory factory = WorkerFactory.newInstance(client);
+    WorkerFactoryOptions factoryOptions =
+        WorkerFactoryOptions.newBuilder()
+            .setWorkerInterceptors(new OpenTracingWorkerInterceptor(getOpenTracingOptions()))
+            .build();
+    WorkerFactory factory = WorkerFactory.newInstance(client, factoryOptions);
+
     Worker worker = factory.newWorker(TASK_QUEUE);
     worker.registerWorkflowImplementationTypes(MyWorkflowImpl.class);
     worker.registerActivitiesImplementations(new MyActivityImpl());
     factory.start();
+  }
+
+  private static OpenTracingOptions getOpenTracingOptions() {
+    Resource serviceNameResource =
+        Resource.create(Attributes.of(ResourceAttributes.SERVICE_NAME, "Worker"));
+
+    OtlpGrpcSpanExporter otlpExporter =
+        OtlpGrpcSpanExporter.builder()
+            .setEndpoint("http://localhost:4317")
+            .setTimeout(1, TimeUnit.SECONDS)
+            .build();
+
+    SdkTracerProvider tracerProvider =
+        SdkTracerProvider.builder()
+            .addSpanProcessor(SimpleSpanProcessor.create(otlpExporter))
+            .setResource(Resource.getDefault().merge(serviceNameResource))
+            .build();
+
+    OpenTelemetrySdk openTelemetry =
+        OpenTelemetrySdk.builder()
+            .setPropagators(
+                ContextPropagators.create(
+                    TextMapPropagator.composite(W3CTraceContextPropagator.getInstance())))
+            .setTracerProvider(tracerProvider)
+            .build();
+
+    // create OpenTracing shim and return OpenTracing Tracer from it
+    Tracer tracer = OpenTracingShim.createTracerShim(openTelemetry);
+
+    return OpenTracingOptions.newBuilder()
+        .setSpanContextCodec(OpenTracingSpanContextCodec.TEXT_MAP_CODEC)
+        .setTracer(tracer)
+        .build();
   }
 }
