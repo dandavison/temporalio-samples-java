@@ -47,37 +47,29 @@ public class EarlyReturnClient {
     WorkflowOptions options = buildWorkflowOptions();
     TransactionWorkflow workflow = client.newWorkflowStub(TransactionWorkflow.class, options);
 
-    System.out.println("Starting workflow with UpdateWithStart");
+    StartWorkflowOperation<FinalReport> startOp =
+            StartWorkflowOperation.newBuilder(workflow::processTransaction, tx)
 
-    UpdateWithStartWorkflowOperation<TxResult> updateOp =
-        UpdateWithStartWorkflowOperation.newBuilder(workflow::returnInitResult)
-            .setWaitForStage(WorkflowUpdateStage.COMPLETED) // Wait for update to complete
-            .build();
+    EarlyReturnResult updateResult = null;
+    WorkflowUpdateHandle<EarlyReturnResult> updateHandle =
+            WorkflowClient.updateWithStart(workflow::earlyReturnUpdate, updateArg, startOp);
 
-    TxResult updateResult = null;
-    try {
-      WorkflowUpdateHandle<TxResult> updateHandle =
-          WorkflowClient.updateWithStart(workflow::processTransaction, tx, updateOp);
+    updateResult = updateHandle.getResultAsync().get();
 
-      updateResult = updateHandle.getResultAsync().get();
+    System.out.println(
+            "Workflow initialized with result: "
+                    + updateResult.getStatus()
+                    + " (transactionId: "
+                    + updateResult.getTransactionId()
+                    + ")");
 
-      System.out.println(
-          "Workflow initialized with result: "
-              + updateResult.getStatus()
-              + " (transactionId: "
-              + updateResult.getTransactionId()
-              + ")");
-
-      TxResult result = WorkflowStub.fromTyped(workflow).getResult(TxResult.class);
-      System.out.println(
-          "Workflow completed with result: "
-              + result.getStatus()
-              + " (transactionId: "
-              + result.getTransactionId()
-              + ")");
-    } catch (Exception e) {
-      System.err.println("Transaction initialization failed: " + e.getMessage());
-    }
+    FinalReport result = WorkflowStub.fromTyped(workflow).getResult(FinalReport.class);
+    System.out.println(
+            "Workflow completed with result: "
+                    + result.getStatus()
+                    + " (transactionId: "
+                    + result.getTransactionId()
+                    + ")");
   }
 
   // Build WorkflowOptions with task queue and unique ID
