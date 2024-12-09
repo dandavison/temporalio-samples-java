@@ -21,7 +21,6 @@ package io.temporal.samples.safemessagepassing;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.temporal.workflow.SignalMethod;
 import io.temporal.workflow.UpdateMethod;
 import io.temporal.workflow.WorkflowInterface;
 import io.temporal.workflow.WorkflowMethod;
@@ -153,8 +152,8 @@ public interface ClusterManagerWorkflow {
   @WorkflowMethod
   ClusterManagerResult run(ClusterManagerInput input);
 
-  @SignalMethod
-  void startCluster();
+  @UpdateMethod
+  void waitForClusterToBeReady();
 
   @UpdateMethod
   boolean stopCluster();

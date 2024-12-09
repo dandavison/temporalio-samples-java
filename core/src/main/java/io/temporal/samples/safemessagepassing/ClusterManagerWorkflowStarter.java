@@ -64,7 +64,7 @@ public class ClusterManagerWorkflowStarter {
         cluster::run,
         new ClusterManagerWorkflow.ClusterManagerInput(Optional.empty(), shouldTestContinueAsNew));
     Duration delay = shouldTestContinueAsNew ? Duration.ofSeconds(10) : Duration.ofSeconds(1);
-    cluster.startCluster();
+    cluster.waitForClusterToBeReady();
     logger.info("Assigning jobs to nodes...");
     List<CompletableFuture<ClusterManagerWorkflow.ClusterManagerAssignNodesToJobResult>>
         assignJobs = new ArrayList<>();

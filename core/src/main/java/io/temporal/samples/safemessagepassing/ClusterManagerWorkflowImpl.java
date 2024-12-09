@@ -70,7 +70,11 @@ public class ClusterManagerWorkflowImpl implements ClusterManagerWorkflow {
 
   @Override
   public ClusterManagerResult run(ClusterManagerInput input) {
-    Workflow.await(() -> state.workflowState != ClusterState.NOT_STARTED);
+    for (int i = 0; i < 25; i++) {
+      state.nodes.put(String.valueOf(i), Optional.empty());
+    }
+    state.workflowState = ClusterState.STARTED;
+    logger.info("Cluster started");
     // The cluster manager is a long-running "entity" workflow so we need to periodically checkpoint
     // its state and
     // continue-as-new.
@@ -96,16 +100,8 @@ public class ClusterManagerWorkflowImpl implements ClusterManagerWorkflow {
   }
 
   @Override
-  public void startCluster() {
-    if (state.workflowState != ClusterState.NOT_STARTED) {
-      logger.warn("Cannot start cluster in state {}", state.workflowState);
-      return;
-    }
-    state.workflowState = ClusterState.STARTED;
-    for (int i = 0; i < 25; i++) {
-      state.nodes.put(String.valueOf(i), Optional.empty());
-    }
-    logger.info("Cluster started");
+  public void waitForClusterToBeReady() {
+    Workflow.await(() -> state.workflowState == ClusterState.STARTED);
   }
 
   @Override
