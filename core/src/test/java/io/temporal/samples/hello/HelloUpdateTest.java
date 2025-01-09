@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
 import io.temporal.api.enums.v1.WorkflowIdReusePolicy;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
-import io.temporal.samples.hello.HelloUpdate.GreetingWorkflow;
+import io.temporal.samples.hello.HelloUpdate.MyWorkflow;
 import io.temporal.testing.TestWorkflowRule;
 import java.time.Duration;
 import java.util.List;
@@ -38,7 +38,7 @@ public class HelloUpdateTest {
   @Rule
   public TestWorkflowRule testWorkflowRule =
       TestWorkflowRule.newBuilder()
-          .setWorkflowTypes(HelloUpdate.GreetingWorkflowImpl.class)
+          .setWorkflowTypes(HelloUpdate.MyWorkflowImpl.class)
           .setDoNotStart(true)
           .build();
 
@@ -58,10 +58,8 @@ public class HelloUpdateTest {
             .setWorkflowIdReusePolicy(
                 WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE)
             .build();
-    GreetingWorkflow workflow =
-        testWorkflowRule
-            .getWorkflowClient()
-            .newWorkflowStub(GreetingWorkflow.class, workflowOptions);
+    MyWorkflow workflow =
+        testWorkflowRule.getWorkflowClient().newWorkflowStub(MyWorkflow.class, workflowOptions);
 
     // Start workflow asynchronously to not use another thread to update.
     WorkflowClient.start(workflow::getGreetings);
@@ -71,8 +69,8 @@ public class HelloUpdateTest {
     // But just to demonstrate the unit testing of a long running workflow adding a long sleep here.
     testWorkflowRule.getTestEnvironment().sleep(Duration.ofDays(1));
     // This workflow keeps receiving updates until exit is called
-    assertEquals(1, workflow.addGreeting("World"));
-    assertEquals(2, workflow.addGreeting("Universe"));
+    assertEquals(1, workflow.addItem("World"));
+    assertEquals(2, workflow.addItem("Universe"));
     workflow.exit();
     // Calling synchronous getGreeting after workflow has started reconnects to the existing
     // workflow and
