@@ -20,13 +20,13 @@
 package io.temporal.samples.nexus.caller;
 
 import io.temporal.samples.nexus.service.NexusService;
-import io.temporal.workflow.NexusOperationHandle;
-import io.temporal.workflow.NexusOperationOptions;
-import io.temporal.workflow.NexusServiceOptions;
-import io.temporal.workflow.Workflow;
+import io.temporal.workflow.*;
 import java.time.Duration;
+import org.slf4j.Logger;
 
 public class HelloCallerWorkflowImpl implements HelloCallerWorkflow {
+  private Logger logger = Workflow.getLogger(this.getClass().getName());
+
   NexusService nexusService =
       Workflow.newNexusServiceStub(
           NexusService.class,
@@ -44,7 +44,8 @@ public class HelloCallerWorkflowImpl implements HelloCallerWorkflow {
             nexusService::hello, new NexusService.HelloInput(message, language));
     // Optionally wait for the operation to be started. NexusOperationExecution will contain the
     // operation ID in case this operation is asynchronous.
-    handle.getExecution().get();
+    NexusOperationExecution exec = handle.getExecution().get();
+    logger.info("Started operation: {}", exec.getOperationId());
     return handle.getResult().get().getMessage();
   }
 }
