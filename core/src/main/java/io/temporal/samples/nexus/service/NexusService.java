@@ -15,6 +15,16 @@ public interface NexusService {
     TR
   }
 
+  enum ActionInOperation {
+    RAISE_APPLICATION_ERROR,
+    RAISE_CUSTOM_ERROR,
+    RAISE_CUSTOM_ERROR_WITH_CAUSE_OF_CUSTOM_ERROR,
+    RAISE_APPLICATION_ERROR_WITH_CAUSE_OF_CUSTOM_ERROR,
+    RAISE_NEXUS_HANDLER_ERROR,
+    RAISE_NEXUS_HANDLER_ERROR_WITH_CAUSE_OF_CUSTOM_ERROR,
+    RAISE_NEXUS_OPERATION_ERROR_WITH_CAUSE_OF_CUSTOM_ERROR
+  }
+
   class HelloInput {
     private final String name;
     private final Language language;
@@ -79,9 +89,40 @@ public interface NexusService {
     }
   }
 
+  class ErrorTestInput {
+    private final ActionInOperation action;
+
+    @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+    public ErrorTestInput(@JsonProperty("action") ActionInOperation action) {
+      this.action = action;
+    }
+
+    @JsonProperty("action")
+    public ActionInOperation getAction() {
+      return action;
+    }
+  }
+
+  class ErrorTestOutput {
+    private final String message;
+
+    @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+    public ErrorTestOutput(@JsonProperty("message") String message) {
+      this.message = message;
+    }
+
+    @JsonProperty("message")
+    public String getMessage() {
+      return message;
+    }
+  }
+
   @Operation
   HelloOutput hello(HelloInput input);
 
   @Operation
   EchoOutput echo(EchoInput input);
+
+  @Operation
+  ErrorTestOutput testError(ErrorTestInput input);
 }

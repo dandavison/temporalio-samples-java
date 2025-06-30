@@ -25,7 +25,8 @@ public class CallerWorker {
                     NexusServiceOptions.newBuilder().setEndpoint("my-nexus-endpoint-name").build()))
             .build(),
         EchoCallerWorkflowImpl.class,
-        HelloCallerWorkflowImpl.class);
+        HelloCallerWorkflowImpl.class,
+        ErrorTestCallerWorkflowImpl.class);
 
     factory.start();
   }
